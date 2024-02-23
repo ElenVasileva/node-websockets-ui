@@ -1,12 +1,12 @@
+import { User } from "./users";
+
 class Room {
     Id: number
-    UserName: string
-    UserIndex: number
+    User: User
 
-    constructor(id: number, userName: string, userIndex: number) {
+    constructor(id: number, user: User) {
         this.Id = id;
-        this.UserName = userName;
-        this.UserIndex = userIndex;
+        this.User = user;
     }
 }
 
@@ -18,8 +18,8 @@ export default class Rooms {
         ]
     }
 
-    public addRoom = (userName: string, userIndex: number) => {
-        const room = new Room(this._roomList.length, userName, userIndex)
+    public addRoom = (user: User) => {
+        const room = new Room(this._roomList.length, user)
         this._roomList.push(room)
         console.log(`new room '${room.Id}' added`)
         return room.Id
@@ -27,5 +27,14 @@ export default class Rooms {
 
     public getRooms = () => {
         return this._roomList
+    }
+
+    public getRoomById(id: number) {
+        return this._roomList.find((room) => { return room.Id === id })
+    }
+
+    public removeRoom(room: Room) {
+        const indexInArray = this._roomList.indexOf(room)
+        return this._roomList.splice(indexInArray, 1)
     }
 }

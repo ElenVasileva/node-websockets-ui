@@ -1,6 +1,6 @@
 import WebSocket from "ws"
 
-class User {
+export class User {
     Name: string
     Password: string
     Index: number

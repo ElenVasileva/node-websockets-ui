@@ -1,12 +1,14 @@
-import { MessageType as MessageType } from "./model/messageType"
+import { MessageType } from "./model/messageType"
 import Users from "./model/users"
 import Rooms from "./model/rooms"
 import WebSocket from "ws"
 import ServerResponse from "./model/serverResponse"
+import Games from "./model/games"
 
 
 const userList = new Users()
 const roomList = new Rooms()
+const gameList = new Games()
 
 const getRoomsResponse = () => {
     const roomsForResponse = roomList.getRooms().map(room => {
@@ -15,8 +17,8 @@ const getRoomsResponse = () => {
             roomUsers:
                 [
                     {
-                        name: room.UserName,
-                        index: room.UserIndex,
+                        name: room.User.Name,
+                        index: room.User.Index,
                     }
                 ],
         }
@@ -41,6 +43,14 @@ const getBadUserResponse = (name: string) => {
         type: MessageType.REGISTRATION,
         data: JSON.stringify({ name, error: true, errorText: `User with the name '${name}' already registered or password is incorrect` }),
         id: 0
+    }
+}
+
+const getCreateGameResponse = (gameId: number, userId: number) => {
+    return {
+        type: MessageType.CREATE_GAME, //send for both players in the room
+        data: JSON.stringify({ idGame: gameId, idPlayer: userId }),// id for player in the game session, who have sent add_user_to_room request, not enemy
+        id: 0,
     }
 }
 
@@ -73,7 +83,7 @@ const registerUser = (request: string, socket: WebSocket) => {
 const createRoom = (socket: WebSocket) => {
     const user = userList.getUserBySocket(socket)
     if (user) {
-        roomList.addRoom(user.Name, user?.Index)
+        roomList.addRoom(user)
         return [
             { ResponseObject: getRoomsResponse(), Recipients: userList.getAllSocket() } as ServerResponse
         ]
@@ -81,5 +91,22 @@ const createRoom = (socket: WebSocket) => {
     return []
 }
 
+const createGame = (request: string, socket: WebSocket) => {
 
-export { registerUser, createRoom }
+    const responses: ServerResponse[] = []
+    const message = JSON.parse(request)
+
+    const room = roomList.getRoomById(message.indexRoom)
+    const secondUser = userList.getUserBySocket(socket)
+    if (room && secondUser) {
+        const gameId = gameList.addGame(message.indexRoom, room.User, secondUser)
+        responses.push({ ResponseObject: getCreateGameResponse(gameId, secondUser.Index), Recipients: [room.User.Socket, socket] })
+        responses.push({ ResponseObject: getRoomsResponse(), Recipients: userList.getAllSocket() })
+        roomList.removeRoom(room)
+    }
+    return responses
+}
+
+
+
+export { registerUser, createRoom, createGame }

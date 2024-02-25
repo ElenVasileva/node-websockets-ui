@@ -26,7 +26,7 @@ export default class Users {
         const user = new User(name, password, this._userList.length, socket)
         this._userList.push(user)
         console.log(`new user '${name}' added`)
-        return user.Index
+        return user
     }
 
     public getUserByName(userName: string) {

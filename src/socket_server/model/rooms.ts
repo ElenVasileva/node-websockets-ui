@@ -12,6 +12,7 @@ class Room {
 
 export default class Rooms {
     private _roomList: Room[]
+    private _nextNewRoomId = 0
 
     constructor() {
         this._roomList = [
@@ -19,8 +20,9 @@ export default class Rooms {
     }
 
     public addRoom = (user: User) => {
-        const room = new Room(this._roomList.length, user)
+        const room = new Room(this._nextNewRoomId, user)
         this._roomList.push(room)
+        this._nextNewRoomId++
         console.log(`new room '${room.Id}' added`)
         return room.Id
     }

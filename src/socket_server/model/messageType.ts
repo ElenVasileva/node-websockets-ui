@@ -1,5 +1,5 @@
 export enum MessageType {
-  REGISTRATION = 'reg',
+  REGISTRATION_OR_LOGIN = 'reg',
   CREATE_ROOM = 'create_room',
   UPDATE_ROOM = 'update_room',
   ADD_USER_TO_ROOM = 'add_user_to_room',

@@ -36,7 +36,9 @@ export default class Rooms {
     }
 
     public removeRoom(room: Room) {
+        console.log(`Remove room with id=${room.Id}`)
         const indexInArray = this._roomList.indexOf(room)
-        return this._roomList.splice(indexInArray, 1)
+        this._roomList.splice(indexInArray, 1)
+        console.log(`room count: ${this._roomList.length}`)
     }
 }

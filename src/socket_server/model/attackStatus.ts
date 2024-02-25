@@ -1,7 +1,7 @@
 export enum AttackStatus {
   MISS = 'miss',
   KILLED = 'killed',
-  SHOT = 'shot',
+  SHOT = 'shot'
 }
 
 export enum CellStatus {

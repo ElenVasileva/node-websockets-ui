@@ -56,10 +56,10 @@ const getBadUserResponse = (name: string) => {
     }
 }
 
-const getCreateGameResponse = (gameId: number, userId: number) => {
+const getCreateGameResponse = (gameId: number, userIndexInGame: number) => {
     return {
         type: MessageType.CREATE_GAME,
-        data: JSON.stringify({ idGame: gameId, idPlayer: userId }),// id for player in the game session, who have sent add_user_to_room request, not enemy
+        data: JSON.stringify({ idGame: gameId, idPlayer: userIndexInGame }),// id for player in the game session, who have sent add_user_to_room request, not enemy
         id: 0,
     }
 }
@@ -67,7 +67,7 @@ const getCreateGameResponse = (gameId: number, userId: number) => {
 const getStartGameResponse = (ships: Ship[]) => {
     return {
         type: MessageType.START_GAME,
-        data: JSON.stringify({ ships: ships.map(ship => ship.toUiObject()), currentPlayerIndex: 0, }),
+        data: JSON.stringify({ ships: ships.map(ship => ship.toUiObject()), currentPlayerIndex: 0 }),
         id: 0,
     }
 }
@@ -155,10 +155,10 @@ const createGame = (request: string, secondUserSocket: WebSocket) => {
     const secondUser = userList.getUserBySocket(secondUserSocket)
     if (room && secondUser) {
         const game = gameList.addGame(message.indexRoom, room.User, secondUser)
-        responses.push({ ResponseObject: getCreateGameResponse(game.Id, game.FirstUser.Index), Recipients: [secondUserSocket] })
-        responses.push({ ResponseObject: getCreateGameResponse(game.Id, secondUser.Index), Recipients: [game.FirstUser.Socket] })
-        responses.push({ ResponseObject: getRoomsResponse(), Recipients: userList.getAllSocket() })
+        responses.push({ ResponseObject: getCreateGameResponse(game.Id, 1), Recipients: [secondUserSocket] })
+        responses.push({ ResponseObject: getCreateGameResponse(game.Id, 0), Recipients: [game.FirstUser.Socket] })
         roomList.removeRoom(room)
+        responses.push({ ResponseObject: getRoomsResponse(), Recipients: userList.getAllSocket() })
     }
     return responses
 }
@@ -179,16 +179,16 @@ const addShips = (request: string, socket: WebSocket) => {
     return responses
 }
 
-const attack = (request: string, socket: WebSocket) => {
+const attack = (request: string, socket: WebSocket, random = false) => {
     const responses: ServerResponse[] = []
     const attackData = JSON.parse(request)
     const game = gameList.getGameById(attackData.gameId)
     const user = userList.getUserBySocket(socket)
     if (user && game) {
         console.log('current in game: ' + game.getCurrentPlayerUser().Name)
-        console.log('from socket: ' + user.Name)
+        console.log('from user: ' + user.Name)
         if (game.getCurrentPlayerUser() === user) {
-            const attackStatus = game.attack(attackData.x, attackData.y, user)
+            const attackStatus = random ? game.randomAttack(attackData, user) : game.attack(attackData.x, attackData.y, user)
             responses.push({ ResponseObject: getAttackResponse(attackData.x, attackData.y, attackData.indexPlayer, attackStatus), Recipients: game.getBothPlayerSockets() })
             if (attackStatus === AttackStatus.KILLED) {
                 if (game.Winner) {
@@ -208,7 +208,6 @@ const attack = (request: string, socket: WebSocket) => {
     }
     return responses
 }
-
 
 
 export { registerUser, createRoom, createGame, addShips, attack }

@@ -16,18 +16,19 @@ const createResponseByRequest = (request: any, socket: WebSocket) => {
             return addShips(request.data, socket)
         case MessageType.ATTACK:
             return attack(request.data, socket)
+        case MessageType.RANDOM_ATTACK:
+            return attack(request.data, socket, true)
         default:
             return []
     }
 }
 
-
-const webSocketServer = new WebSocketServer({ port: 3000 })
-
+const port = 3000
+const webSocketServer = new WebSocketServer({ port: port })
+console.log(`Start web socket server on the ${port} port!`);
 
 webSocketServer.on('connection', function connection(socket) {
     socket.on('message', function message(data: string) {
-
         console.log(`received: ${data}`);
         const parsed = JSON.parse(data)
         createResponseByRequest(parsed, socket).forEach(response => {

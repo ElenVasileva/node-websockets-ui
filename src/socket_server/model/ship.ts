@@ -78,16 +78,13 @@ export default class Ship {
     }
 
     public attack = (x: number, y: number) => {
-        const delta1 = this.IsVertical ? x - this.X : y - this.Y; // should be 0
-        const delta2 = this.IsVertical ? y - this.Y : x - this.X; // sould be from 0 to Length
-        if (delta1 === 0 && delta2 >= 0 && delta2 < this.Length) {
-            this.Shotted.push(delta2)
-            if (this.Shotted.length === this.Length) {
-                return AttackStatus.KILLED
-            }
-            return AttackStatus.SHOT
+        const deckNumber = x - this.X + y - this.Y
+        this.Shotted.push(deckNumber)
+        console.log(`deckNumber: ${deckNumber}`)
+        if (this.Shotted.length === this.Length) {
+            return AttackStatus.KILLED
         }
-        return AttackStatus.MISS
+        return AttackStatus.SHOT
     }
 
 }

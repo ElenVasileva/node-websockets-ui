@@ -117,6 +117,7 @@ export class Game {
                         if (attackStatus === AttackStatus.KILLED) {
                             if (this.areAllShipsKilled(attackingUser)) {
                                 this.Winner = attackingUser
+                                attackingUser.Wins++
                             }
                             else {
                                 this.JustKilledShip = ship

@@ -1,5 +1,5 @@
 import { MessageType } from "./model/messageType"
-import Users from "./model/users"
+import Users, { Winner } from "./model/users"
 import Rooms from "./model/rooms"
 import WebSocket from "ws"
 import ServerResponse from "./model/serverResponse"
@@ -15,7 +15,9 @@ const gameList = new Games()
 // const addInitialData = () => {
 //     const user1 = userList.addUser('write ', 'write ', new WebSocket(null))
 //     const user2 = userList.addUser('Please', 'Please', new WebSocket(null))
-//     gameList.addGame(-1, user1, user2)
+//     user1.Wins = 1
+//     user2.Wins = 2
+//     //gameList.addGame(-1, user1, user2)
 // }
 
 // addInitialData()
@@ -96,6 +98,14 @@ const getFinishResponse = (playerIndexInGame: number) => {
     }
 }
 
+const getWinnersResponse = (winners: Winner[]) => {
+    return {
+        type: MessageType.UPDATE_WINNERS,
+        data: JSON.stringify(winners),
+        id: 0,
+    }
+}
+
 
 const registerUser = (request: string, socket: WebSocket) => {
 
@@ -120,6 +130,7 @@ const registerUser = (request: string, socket: WebSocket) => {
         }
         else {
             responses.push({ ResponseObject: getRoomsResponse(), Recipients: [socket] })
+            responses.push({ ResponseObject: getWinnersResponse(userList.getWinners()), Recipients: userList.getAllSocket() })
         }
     }
     else if (!user) { //   ---   REGISTER   ---
@@ -127,6 +138,7 @@ const registerUser = (request: string, socket: WebSocket) => {
 
         responses.push({ ResponseObject: getUserResponse(message.name, user.Index), Recipients: [socket] })
         responses.push({ ResponseObject: getRoomsResponse(), Recipients: [socket] })
+        responses.push({ ResponseObject: getWinnersResponse(userList.getWinners()), Recipients: userList.getAllSocket() })
     }
     else {
         responses.push({ ResponseObject: getBadUserResponse(message.name), Recipients: [socket] })
@@ -193,6 +205,7 @@ const attack = (request: string, socket: WebSocket, random = false) => {
             if (attackStatus === AttackStatus.KILLED) {
                 if (game.Winner) {
                     responses.push({ ResponseObject: getFinishResponse(game.CurrentPlayer), Recipients: game.getBothPlayerSockets() })
+                    responses.push({ ResponseObject: getWinnersResponse(userList.getWinners()), Recipients: userList.getAllSocket() })
                 }
                 else {
                     game.JustKilledShip?.getCellsAround().forEach(point => {

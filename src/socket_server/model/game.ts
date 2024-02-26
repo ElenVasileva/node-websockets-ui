@@ -86,6 +86,7 @@ export class Game {
             sockets.push(this.SecondUser.Socket)
         return sockets
     }
+
     public changePlayer = () => {
         this.CurrentPlayerIndex = 1 - this.CurrentPlayerIndex as 0 | 1
         console.log(`player index will change to ${this.CurrentPlayerIndex}`)
@@ -166,9 +167,7 @@ export class Game {
                 }
             }
         }
-        console.log(`unshotted length: ${unshotted.length}`)
         const random = Math.floor(Math.random() * unshotted.length);
-        console.log(`random: ${random}`)
         return unshotted[random]
     }
 
@@ -188,13 +187,9 @@ export class Game {
     }
 
     private getRandomPositionNearShip = (field: Cell[][], ship: Ship) => {
-        console.log('getRandomPositionNearShip')
         console.log(ship.Shotted[0])
         const shottedOnlyOneDeck = ship.Shotted.length === 1
-
-        console.log(`shottedOnlyOneDeck: ${shottedOnlyOneDeck}`)
         if (shottedOnlyOneDeck) {
-            console.log(`ship.Shotted[0]: ${ship.Shotted[0]}`)
             if (ship.Shotted[0] != undefined) {
                 const shottedX = ship.IsVertical ? ship.X : ship.X + ship.Shotted[0]
                 const shottedY = ship.IsVertical ? ship.Y + ship.Shotted[0] : ship.Y
@@ -221,7 +216,6 @@ export class Game {
         const field = attackingUser === this.FirstUser ? this.SecondUserField : this.FirstUserField
         const ships = attackingUser === this.FirstUser ? this.SecondUserShips : this.FirstUserShips
         const shottedShip = ships.find((ship: Ship) => { return ship.isShotted() })
-        console.log(`--------- ${shottedShip?.Length}`)
         const cell = shottedShip ? this.getRandomPositionNearShip(field, shottedShip) : this.getRandomPosition(field)
         if (cell) {
             console.log(`random attack: x=${cell.x}, y=${cell.y}`)

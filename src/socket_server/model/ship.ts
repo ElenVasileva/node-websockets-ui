@@ -45,7 +45,7 @@ export default class Ship {
     }
 
     public isShotted = () => {
-        return this.Shotted.length > 0
+        return this.Shotted.length > 0 && this.Shotted.length < this.Length
     }
 
     public getCellsAround = () => {

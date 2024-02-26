@@ -208,6 +208,34 @@ export class Game {
                 }
             }
         }
+        else {
+            if (ship.Shotted[0] != undefined && ship.Shotted[1] != undefined) {
+
+                const shottedX1 = ship.IsVertical ? ship.X : ship.X + ship.Shotted[0]
+                const shottedY1 = ship.IsVertical ? ship.Y + ship.Shotted[0] : ship.Y
+
+                const shottedX2 = ship.IsVertical ? ship.X : ship.X + ship.Shotted[1]
+                const shottedY2 = ship.IsVertical ? ship.Y + ship.Shotted[1] : ship.Y
+
+                if (shottedX1 === shottedX2) {
+                    if (this.checkNeighbour(field, shottedX1, Math.min(shottedY1, shottedY2) - 1)) {
+                        return { x: shottedX1, y: Math.min(shottedY1, shottedY2) - 1 }
+                    }
+                    if (this.checkNeighbour(field, shottedX1, Math.max(shottedY1, shottedY2) + 1)) {
+                        return { x: shottedX1, y: Math.max(shottedY1, shottedY2) + 1 }
+                    }
+                }
+                else if (shottedY1 === shottedY2) {
+                    if (this.checkNeighbour(field, Math.min(shottedX1, shottedX2) - 1, shottedY1)) {
+                        return { x: Math.min(shottedX1, shottedX2) - 1, y: shottedY1 }
+                    }
+                    if (this.checkNeighbour(field, Math.max(shottedX1, shottedX2) + 1, shottedY1)) {
+                        return { x: Math.max(shottedX1, shottedX2) + 1, y: shottedY1 }
+                    }
+                }
+            }
+
+        }
         return this.getRandomPosition(field)
     }
 
@@ -226,22 +254,41 @@ export class Game {
     }
 
     public createRandomShips = () => {
-        const ships: Ship[] = [
+        const set: Ship[][] = []
+        let ships: Ship[] = [
             new Ship(3, 4, false, 4),
-
-            new Ship(5, 0, true, 3),
-            new Ship(0, 1, false, 3),
-
-            new Ship(4, 6, true, 2),
-            new Ship(6, 6, false, 2),
-            new Ship(6, 9, false, 2),
-
-            new Ship(0, 3, false, 1),
-            new Ship(0, 6, false, 1),
-            new Ship(9, 1, false, 1),
-            new Ship(9, 3, false, 1)
+            new Ship(5, 0, true, 3), new Ship(0, 1, false, 3),
+            new Ship(4, 6, true, 2), new Ship(6, 6, false, 2), new Ship(6, 9, false, 2),
+            new Ship(0, 3, false, 1), new Ship(0, 6, false, 1), new Ship(9, 1, false, 1), new Ship(9, 3, false, 1)
         ]
-        return ships
+        set.push(ships)
+
+        ships = [
+            new Ship(4, 4, false, 4),
+            new Ship(7, 0, true, 3), new Ship(2, 1, false, 3),
+            new Ship(4, 6, true, 2), new Ship(6, 6, false, 2), new Ship(6, 9, false, 2),
+            new Ship(0, 4, false, 1), new Ship(0, 8, false, 1), new Ship(9, 3, false, 1), new Ship(9, 3, false, 1)
+        ]
+        set.push(ships)
+
+        ships = [
+            new Ship(2, 4, false, 4),
+            new Ship(7, 0, true, 3), new Ship(2, 1, false, 3),
+            new Ship(4, 6, true, 2), new Ship(6, 7, false, 2), new Ship(6, 9, false, 2),
+            new Ship(0, 4, false, 1), new Ship(0, 8, false, 1), new Ship(9, 3, false, 1), new Ship(9, 3, false, 1)
+        ]
+        set.push(ships)
+
+        ships = [
+            new Ship(4, 1, false, 4),
+            new Ship(2, 2, true, 3), new Ship(0, 7, false, 3),
+            new Ship(0, 0, false, 2), new Ship(2, 8, false, 2), new Ship(6, 4, false, 2),
+            new Ship(0, 2, false, 1), new Ship(4, 3, false, 1), new Ship(5, 4, false, 1), new Ship(8, 6, false, 1)
+        ]
+        set.push(ships)
+
+        const random = Math.floor(Math.random() * set.length);
+        return set[random] || ships
     }
 
 }

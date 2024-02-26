@@ -13,14 +13,17 @@ export default class Ship {
     Y: number
     IsVertical: boolean
     Length: number
-    Shotted: number[]
+    Shotted: number[] = []
 
-    constructor(ship: UiShip) {
-        this.X = ship.position.x
-        this.Y = ship.position.y
-        this.IsVertical = ship.direction
-        this.Length = ship.length
-        this.Shotted = []
+    constructor(x: number, y: number, isVertical: boolean, length: number) {
+        this.X = x
+        this.Y = y
+        this.IsVertical = isVertical
+        this.Length = length
+    }
+
+    static shipFromUiShip = (ship: UiShip) => {
+        return new Ship(ship.position.x, ship.position.y, ship.direction, ship.length)
     }
 
     getShipType = () => {

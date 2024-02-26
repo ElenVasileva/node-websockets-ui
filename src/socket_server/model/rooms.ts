@@ -22,7 +22,7 @@ export default class Rooms {
     public addRoom = (user: User) => {
         const room = new Room(this._nextNewRoomId, user)
         this._roomList.push(room)
-        this._nextNewRoomId++
+        this._nextNewRoomId += 2
         console.log(`new room '${room.Id}' added`)
         return room.Id
     }

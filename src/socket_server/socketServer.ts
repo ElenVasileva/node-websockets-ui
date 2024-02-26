@@ -1,7 +1,8 @@
 import { WebSocket, WebSocketServer } from 'ws';
 
 import { MessageType } from './model/messageType';
-import { registerUser, createRoom, createGame, addShips, attack } from './controller';
+import { registerUser, createRoom, createGame, addShips, attack, createSingleGame } from './controller';
+import ServerResponse from './model/serverResponse';
 
 
 const createResponseByRequest = (request: any, socket: WebSocket) => {
@@ -18,6 +19,8 @@ const createResponseByRequest = (request: any, socket: WebSocket) => {
             return attack(request.data, socket)
         case MessageType.RANDOM_ATTACK:
             return attack(request.data, socket, true)
+        case MessageType.SINGLE_PLAY:
+            return createSingleGame(socket)
         default:
             return []
     }
@@ -27,25 +30,28 @@ const port = 3000
 const webSocketServer = new WebSocketServer({ port: port })
 console.log(`Start web socket server on the ${port} port!`);
 
+export const sendResponse = (responses: ServerResponse[]) => {
+    responses.forEach(response => {
+        const responseString = JSON.stringify(response.ResponseObject)
+        response.Recipients.forEach((socket) => {
+            if (socket && socket.readyState === socket.OPEN) {
+                socket.send(responseString)
+            }
+        })
+        console.log(`response: ${responseString}`);
+
+    });
+}
+
 webSocketServer.on('connection', function connection(socket) {
     socket.on('message', function message(data: string) {
         console.log(`received: ${data}`);
         const parsed = JSON.parse(data)
-        createResponseByRequest(parsed, socket).forEach(response => {
-            const responseString = JSON.stringify(response.ResponseObject)
-            response.Recipients.forEach((socket) => {
-                if (socket.readyState === socket.OPEN) {
-                    socket.send(responseString)
-                }
-            })
-            console.log(`response: ${responseString}`);
-
-        });
+        sendResponse(createResponseByRequest(parsed, socket))
 
     });
-
-
 });
+
 
 export default webSocketServer
 

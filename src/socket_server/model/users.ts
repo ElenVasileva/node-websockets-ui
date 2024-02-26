@@ -9,10 +9,10 @@ export class User {
     Name: string
     Password: string
     Index: number
-    Socket: WebSocket
+    Socket: WebSocket | undefined
     Wins: number
 
-    constructor(name: string, password: string, index: number, socket: WebSocket) {
+    constructor(name: string, password: string, index: number, socket: WebSocket | undefined) {
         this.Name = name
         this.Password = password
         this.Index = index
@@ -20,6 +20,8 @@ export class User {
         this.Wins = 0
     }
 }
+
+export const BOT = new User('bot', '', -1, undefined)
 
 export default class Users {
     private _userList: User[]
@@ -45,7 +47,12 @@ export default class Users {
     }
 
     public getAllSocket() {
-        return this._userList.map((user) => { return user.Socket })
+        const sockets: WebSocket[] = []
+        this._userList.forEach((user) => {
+            if (user.Socket)
+                sockets.push(user.Socket)
+        })
+        return sockets
     }
 
     public getWinners() {

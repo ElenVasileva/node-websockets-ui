@@ -1,7 +1,8 @@
+import WebSocket from "ws";
 import { AttackStatus, CellStatus } from "./attackStatus";
 import { Cell } from "./cell";
 import Ship, { UiShip } from "./ship";
-import { User } from "./users";
+import { BOT, User } from "./users";
 
 export class Game {
     Id: number
@@ -14,16 +15,16 @@ export class Game {
     FirstUserField: Cell[][]
     SecondUserField: Cell[][]
 
-    CurrentPlayer: 0 | 1
+    CurrentPlayerIndex: 0 | 1
 
     JustKilledShip: Ship | undefined
-    Winner: User | undefined
+    Winner: User | string
 
-    constructor(id: number, firstUser: User, secondUser: User) {
+    constructor(id: number, firstUser: User, secondUser: User = BOT) {
         this.Id = id;
         this.FirstUser = firstUser;
         this.SecondUser = secondUser;
-        this.CurrentPlayer = 0
+        this.CurrentPlayerIndex = 0
     }
 
     createField = (ships: Ship[]) => {
@@ -52,6 +53,10 @@ export class Game {
         return field
     }
 
+    isWithBot = () => {
+        return this.SecondUser === BOT
+    }
+
     areAllShipsKilled = (attackingUser: User) => {
         let shipsToCheck = attackingUser === this.FirstUser ? this.SecondUserShips : this.FirstUserShips
         return shipsToCheck.every((ship) => { return ship.isKilled() })
@@ -74,18 +79,23 @@ export class Game {
     }
 
     public getBothPlayerSockets = () => {
-        return [this.FirstUser.Socket, this.SecondUser.Socket]
+        const sockets: WebSocket[] = []
+        if (this.FirstUser.Socket)
+            sockets.push(this.FirstUser.Socket)
+        if (this.SecondUser.Socket)
+            sockets.push(this.SecondUser.Socket)
+        return sockets
     }
     public changePlayer = () => {
-        this.CurrentPlayer = 1 - this.CurrentPlayer as 0 | 1
+        this.CurrentPlayerIndex = 1 - this.CurrentPlayerIndex as 0 | 1
+        console.log(`player index will change to ${this.CurrentPlayerIndex}`)
     }
 
     public getCurrentPlayerUser = () => {
-        return this.CurrentPlayer ? this.SecondUser : this.FirstUser
+        return this.CurrentPlayerIndex ? this.SecondUser : this.FirstUser
     }
 
-    public addShips = (user: User, uiShips: UiShip[]) => {
-        const ships = uiShips.map((uiShip: UiShip) => new Ship(uiShip))
+    public addShips = (user: User, ships: Ship[]) => {
         const field = this.createField(ships)
         if (user === this.FirstUser) {
             this.FirstUserShips = ships
@@ -95,8 +105,13 @@ export class Game {
             this.SecondUserShips = ships
             this.SecondUserField = field
         }
-        console.log(`User '${user.Name}' added ${ships.length} ships to the game with id '${this.Id}'`)
+        console.log(`User '${user ? user.Name : 'bot'}' added ${ships.length} ships to the game with id '${this.Id}'`)
         return this.areBothUsersAddedShips()
+    }
+
+    public addUiShips = (user: User, uiShips: UiShip[]) => {
+        const ships = uiShips.map((uiShip: UiShip) => Ship.shipFromUiShip(uiShip))
+        return this.addShips(user, ships)
     }
 
     public attack = (x: number, y: number, attackingUser: User) => {
@@ -132,12 +147,11 @@ export class Game {
             }
         }
 
-        console.log(`attackStatus: ${attackStatus}`)
-        return attackStatus
+        console.log(`user ${attackingUser.Name} attacked (${x}, ${y}), status: ${attackStatus}`)
+        return { attackStatus, x, y }
     }
 
-    public randomAttack = (attackData: any, user: User) => {
-        const field = user === this.FirstUser ? this.SecondUserField : this.FirstUserField
+    private getRandomPosition = (field: Cell[][]) => {
         const unshotted = []
         for (var i = 0; i < 10; i++) {
             for (var j = 0; j < 10; j++) {
@@ -155,13 +169,85 @@ export class Game {
         console.log(`unshotted length: ${unshotted.length}`)
         const random = Math.floor(Math.random() * unshotted.length);
         console.log(`random: ${random}`)
-        const cell = unshotted[random]
-        if (cell) {
-            attackData.x = cell.x
-            attackData.y = cell.y
+        return unshotted[random]
+    }
+
+    private checkNeighbour = (field: Cell[][], x: number, y: number) => {
+        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
+            const column = field[x]
+            if (column) {
+                const cell = column[y]
+                if (cell) {
+                    console.log(`checked (${x}, ${y}), status: ${cell.Status}`)
+                    if (cell.Status === CellStatus.SHIP || cell.Status === CellStatus.WATER)
+                        return true
+                }
+            }
         }
-        console.log(`random attack: x=${attackData.x}, y=${attackData.y}`)
-        return this.attack(attackData.x, attackData.y, user)
+        return false
+    }
+
+    private getRandomPositionNearShip = (field: Cell[][], ship: Ship) => {
+        console.log('getRandomPositionNearShip')
+        console.log(ship.Shotted[0])
+        const shottedOnlyOneDeck = ship.Shotted.length === 1
+
+        console.log(`shottedOnlyOneDeck: ${shottedOnlyOneDeck}`)
+        if (shottedOnlyOneDeck) {
+            console.log(`ship.Shotted[0]: ${ship.Shotted[0]}`)
+            if (ship.Shotted[0] != undefined) {
+                const shottedX = ship.IsVertical ? ship.X : ship.X + ship.Shotted[0]
+                const shottedY = ship.IsVertical ? ship.Y + ship.Shotted[0] : ship.Y
+                console.log(`shotted: (${shottedX}, ${shottedY})`)
+                if (this.checkNeighbour(field, shottedX - 1, shottedY)) {
+                    return { x: shottedX - 1, y: shottedY }
+                }
+                if (this.checkNeighbour(field, shottedX + 1, shottedY)) {
+                    return { x: shottedX + 1, y: shottedY }
+                }
+                if (this.checkNeighbour(field, shottedX, shottedY - 1)) {
+                    return { x: shottedX, y: shottedY - 1 }
+                }
+                if (this.checkNeighbour(field, shottedX, shottedY + 1)) {
+                    return { x: shottedX, y: shottedY + 1 }
+                }
+            }
+        }
+        return this.getRandomPosition(field)
+    }
+
+    public randomAttack = (attackingUser: User) => {
+        console.log(attackingUser.Name)
+        const field = attackingUser === this.FirstUser ? this.SecondUserField : this.FirstUserField
+        const ships = attackingUser === this.FirstUser ? this.SecondUserShips : this.FirstUserShips
+        const shottedShip = ships.find((ship: Ship) => { return ship.isShotted() })
+        console.log(`--------- ${shottedShip?.Length}`)
+        const cell = shottedShip ? this.getRandomPositionNearShip(field, shottedShip) : this.getRandomPosition(field)
+        if (cell) {
+            console.log(`random attack: x=${cell.x}, y=${cell.y}`)
+            return this.attack(cell.x, cell.y, attackingUser)
+        }
+        return { attackStatus: AttackStatus.MISS, x: - 1, y: -1 }
+
+    }
+
+    public createRandomShips = () => {
+        const ships: Ship[] = [
+            new Ship(3, 4, false, 4),
+
+            new Ship(5, 0, true, 3),
+            new Ship(0, 1, false, 3),
+
+            new Ship(4, 6, true, 2),
+            new Ship(6, 6, false, 2),
+            new Ship(6, 9, false, 2),
+
+            new Ship(0, 3, false, 1),
+            new Ship(0, 6, false, 1),
+            new Ship(9, 1, false, 1),
+            new Ship(9, 3, false, 1)
+        ]
+        return ships
     }
 
 }

@@ -1,11 +1,13 @@
 import { MessageType } from "./model/messageType"
-import Users, { Winner } from "./model/users"
+import Users, { BOT, User, Winner } from "./model/users"
 import Rooms from "./model/rooms"
 import WebSocket from "ws"
 import ServerResponse from "./model/serverResponse"
 import Games from "./model/games"
 import Ship from "./model/ship"
 import { AttackStatus } from "./model/attackStatus"
+import { Game } from "./model/game"
+import { sendResponse } from "./socketServer"
 
 
 const userList = new Users()
@@ -113,8 +115,7 @@ const registerUser = (request: string, socket: WebSocket) => {
     var user = userList.getUserByName(message.name);
     const responses: ServerResponse[] = []
     if (user && user.Password === message.password) { //   ---   LOGIN   ---
-        if (user.Socket.protocol) {
-            console.log(user.Socket)
+        if (user.Socket && user.Socket.protocol) {
             user.Socket.close()
         }
         user.Socket = socket
@@ -125,7 +126,7 @@ const registerUser = (request: string, socket: WebSocket) => {
             responses.push({ ResponseObject: getCreateGameResponse(game.Id, game.FirstUser === user ? 0 : 1), Recipients: [socket] })
             if (game.FirstUserShips && game.SecondUserShips) {
                 responses.push({ ResponseObject: getStartGameResponse(game.FirstUser === user ? game.FirstUserShips : game.SecondUserShips), Recipients: [socket] })
-                responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayer), Recipients: [socket] })
+                responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayerIndex), Recipients: [socket] })
             }
         }
         else {
@@ -181,46 +182,75 @@ const addShips = (request: string, socket: WebSocket) => {
     const user = userList.getUserBySocket(socket)
     const game = gameList.getGameById(shipsData.gameId)
     if (user && game) {
-        if (game.addShips(user, shipsData.ships)) {
+        if (game.addUiShips(user, shipsData.ships)) {
             responses.push({ ResponseObject: getStartGameResponse(game.FirstUserShips), Recipients: [game.FirstUser.Socket] })
-            responses.push({ ResponseObject: getStartGameResponse(game.SecondUserShips), Recipients: [game.SecondUser.Socket] })
-            responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayer), Recipients: game.getBothPlayerSockets() })
+            if (game.SecondUser) {
+                responses.push({ ResponseObject: getStartGameResponse(game.SecondUserShips), Recipients: [game.SecondUser.Socket] })
+            }
+            responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayerIndex), Recipients: game.getBothPlayerSockets() })
         }
     }
 
     return responses
 }
 
-const attack = (request: string, socket: WebSocket, random = false) => {
-    const responses: ServerResponse[] = []
+const performAttack = (game: Game, attackingUser: User, attackData?: any) => {
+    let responses: ServerResponse[] = []
+    const attackingUserIndex = game.CurrentPlayerIndex
+    const { attackStatus, x, y } = attackData ? game.attack(attackData.x, attackData.y, attackingUser) : game.randomAttack(attackingUser)
+    responses.push({ ResponseObject: getAttackResponse(x, y, attackingUserIndex, attackStatus), Recipients: game.getBothPlayerSockets() })
+    if (attackStatus === AttackStatus.KILLED) {
+        if (game.Winner) {
+            responses.push({ ResponseObject: getFinishResponse(game.CurrentPlayerIndex), Recipients: game.getBothPlayerSockets() })
+            responses.push({ ResponseObject: getWinnersResponse(userList.getWinners()), Recipients: userList.getAllSocket() })
+        }
+        else {
+            game.JustKilledShip?.getCellsAround().forEach(point => {
+                responses.push({ ResponseObject: getAttackResponse(point.x, point.y, game.CurrentPlayerIndex, AttackStatus.MISS), Recipients: game.getBothPlayerSockets() })
+            });
+            responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayerIndex), Recipients: game.getBothPlayerSockets() })
+        }
+    }
+    else {
+        responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayerIndex), Recipients: game.getBothPlayerSockets() })
+    }
+    console.log(`current player: ${game.getCurrentPlayerUser().Name}`)
+    if (game.getCurrentPlayerUser() === BOT && !game.Winner) {
+        setTimeout(() => {
+            sendResponse(performAttack(game, BOT))
+        }, 2000)
+    }
+    return responses
+}
+
+const attack = (request: string, socket: WebSocket, random?: boolean) => {
+    let responses: ServerResponse[] = []
     const attackData = JSON.parse(request)
     const game = gameList.getGameById(attackData.gameId)
     const user = userList.getUserBySocket(socket)
     if (user && game) {
-        console.log('current in game: ' + game.getCurrentPlayerUser().Name)
+        const currentPlayer = game.getCurrentPlayerUser()
+        console.log(`current in game: ${currentPlayer ? currentPlayer.Name : 'bot'}`)
         console.log('from user: ' + user.Name)
-        if (game.getCurrentPlayerUser() === user) {
-            const attackStatus = random ? game.randomAttack(attackData, user) : game.attack(attackData.x, attackData.y, user)
-            responses.push({ ResponseObject: getAttackResponse(attackData.x, attackData.y, attackData.indexPlayer, attackStatus), Recipients: game.getBothPlayerSockets() })
-            if (attackStatus === AttackStatus.KILLED) {
-                if (game.Winner) {
-                    responses.push({ ResponseObject: getFinishResponse(game.CurrentPlayer), Recipients: game.getBothPlayerSockets() })
-                    responses.push({ ResponseObject: getWinnersResponse(userList.getWinners()), Recipients: userList.getAllSocket() })
-                }
-                else {
-                    game.JustKilledShip?.getCellsAround().forEach(point => {
-                        responses.push({ ResponseObject: getAttackResponse(point.x, point.y, game.CurrentPlayer, AttackStatus.MISS), Recipients: game.getBothPlayerSockets() })
-                    });
-                    responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayer), Recipients: game.getBothPlayerSockets() })
-                }
-            }
-            else {
-                responses.push({ ResponseObject: getTurnResponse(game.CurrentPlayer), Recipients: game.getBothPlayerSockets() })
-            }
+        if (currentPlayer === user) {
+            responses = random ? performAttack(game, user) : performAttack(game, user, attackData)
         }
     }
     return responses
 }
 
 
-export { registerUser, createRoom, createGame, addShips, attack }
+
+const createSingleGame = (socket: WebSocket) => {
+    const responses: ServerResponse[] = []
+
+    const user = userList.getUserBySocket(socket)
+    if (user) {
+        const game = gameList.addGameWithBot(user)
+        responses.push({ ResponseObject: getCreateGameResponse(game.Id, 0), Recipients: [socket] })
+    }
+    return responses
+}
+
+
+export { registerUser, createRoom, createGame, addShips, attack, createSingleGame }
